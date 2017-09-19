@@ -1,3 +1,9 @@
+case node['platform_family']
+when 'debian', 'rhel', 'centos', 'amazon'
+  package 'gcc-c++'
+  package 'gcc'
+end
+
 chef_gem 'mime-types' do
   version node['s3_file']['mime-types']['version']
   action :install
