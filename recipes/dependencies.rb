@@ -1,10 +1,20 @@
 case node['platform_family']
-when 'debian', 'rhel', 'centos', 'amazon'
+when 'rhel', 'centos', 'amazon'
   package 'gcc' do
-    action :install
+    action :nothing
   end.run_action(:install)
   package 'gcc-c++' do
-    action :install
+    action :nothing
+  end.run_action(:install)
+when 'debian'
+  apt_update 'update' do
+    action :nothing
+  end.run_action(:periodic)
+  package 'g++' do
+    action :nothing
+  end.run_action(:install)
+  package 'make' do
+    action :nothing
   end.run_action(:install)
 end
 
