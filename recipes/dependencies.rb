@@ -1,7 +1,8 @@
 case node['platform_family']
 when 'debian', 'rhel', 'centos', 'amazon'
-  package 'gcc-c++'
-  package 'gcc'
+  %w(gcc gcc-c++).each do |pkg|
+    package pkg
+  end
 end.run_action(:install)
 
 chef_gem 'mime-types' do
