@@ -1,7 +1,10 @@
 case node['platform_family']
 when 'debian', 'rhel', 'centos', 'amazon'
-  %w(gcc gcc-c++).each do |pkg|
-    package pkg
+  package 'gcc' do
+    action :install
+  end.run_action(:install)
+  package 'gcc-c++' do
+    action :install
   end.run_action(:install)
 end
 
