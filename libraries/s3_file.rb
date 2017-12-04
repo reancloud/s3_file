@@ -70,6 +70,26 @@ module S3FileLib
       request["Authorization"] = auth_string
       request
     end
+
+    def self.hmac(key, value)
+      OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), key, value)
+    end
+
+    def self.hexhmac(key, value)
+      OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha256'), key, value)
+    end
+    
+    def self.sha256_hexdigest(value)
+      if (File === value || Tempfile === value) && !value.path.nil? && File.exist?(value.path)
+        OpenSSL::Digest::SHA256.file(value).hexdigest
+      elsif value.respond_to?(:read)
+        sha256 = OpenSSL::Digest::SHA256.new
+        update_in_chunks(sha256, value)
+        sha256.hexdigest
+      else
+        OpenSSL::Digest::SHA256.hexdigest(value)
+      end
+    end
   end
 
   BLOCKSIZE_TO_READ = 1024 * 1000 unless const_defined?(:BLOCKSIZE_TO_READ)
@@ -217,25 +237,5 @@ module S3FileLib
     RestClient.proxy = ENV['http_proxy']
     RestClient.proxy = ENV['https_proxy']
     RestClient
-  end
-
-  def self.hmac(key, value)
-    OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), key, value)
-  end
-
-  def self.hexhmac(key, value)
-    OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha256'), key, value)
-  end
-  
-  def self.sha256_hexdigest(value)
-    if (File === value || Tempfile === value) && !value.path.nil? && File.exist?(value.path)
-      OpenSSL::Digest::SHA256.file(value).hexdigest
-    elsif value.respond_to?(:read)
-      sha256 = OpenSSL::Digest::SHA256.new
-      update_in_chunks(sha256, value)
-      sha256.hexdigest
-    else
-      OpenSSL::Digest::SHA256.hexdigest(value)
-    end
   end
 end
