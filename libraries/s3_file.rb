@@ -29,12 +29,12 @@ module S3FileLib
 
   module SigV4
     def self.sigv4(string_to_sign, aws_secret_access_key, region, date, serviceName)
-      k_date    = OpenSSL::HMAC.digest("sha256", "AWS4" + aws_secret_access_key, date)
-      k_region  = OpenSSL::HMAC.digest("sha256", k_date, region)
-      k_service = OpenSSL::HMAC.digest("sha256", k_region, serviceName)
-      k_signing = OpenSSL::HMAC.digest("sha256", k_service, "aws4_request")
+      k_date    = hmac("AWS4" + aws_secret_access_key, date)
+      k_region  = hmac(k_date, region)
+      k_service = hmac(k_region, serviceName)
+      k_signing = hmac(k_service, "aws4_request")
 
-      OpenSSL::HMAC.hexdigest("sha256", k_signing, string_to_sign)
+      hexhmac(k_signing, string_to_sign)
     end
 
     def self.sign(request, params, region, aws_access_key_id, aws_secret_access_key, token = nil)
@@ -47,7 +47,7 @@ module S3FileLib
       time = now.strftime("%Y%m%dT%H%M%SZ")
       date = now.strftime("%Y%m%d")
 
-      body_digest = Digest::SHA256.hexdigest(content)
+      body_digest = sha256_hexdigest(content)
 
       request["date"] = now
       request["host"] = url.host
@@ -63,7 +63,7 @@ module S3FileLib
       scope = format("%s/%s/%s/%s", date, region, service, "aws4_request")
       credential = [aws_access_key_id, scope].join("/")
 
-      string_to_sign = "#{algorithm}\n#{time}\n#{scope}\n#{Digest::SHA256.hexdigest(canonical_request)}"
+      string_to_sign = "#{algorithm}\n#{time}\n#{scope}\n#{sha256_hexdigest(canonical_request)}"
       signed_hex = sigv4(string_to_sign, aws_secret_access_key, region, date, service)
       auth_string = "#{algorithm} Credential=#{credential}, SignedHeaders=#{signed_headers}, Signature=#{signed_hex}"
 
@@ -217,5 +217,25 @@ module S3FileLib
     RestClient.proxy = ENV['http_proxy']
     RestClient.proxy = ENV['https_proxy']
     RestClient
+  end
+
+  def self.hmac(key, value)
+    OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), key, value)
+  end
+
+  def self.hexhmac(key, value)
+    OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha256'), key, value)
+  end
+  
+  def self.sha256_hexdigest(value)
+    if (File === value || Tempfile === value) && !value.path.nil? && File.exist?(value.path)
+      OpenSSL::Digest::SHA256.file(value).hexdigest
+    elsif value.respond_to?(:read)
+      sha256 = OpenSSL::Digest::SHA256.new
+      update_in_chunks(sha256, value)
+      sha256.hexdigest
+    else
+      OpenSSL::Digest::SHA256.hexdigest(value)
+    end
   end
 end
